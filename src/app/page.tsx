@@ -5,25 +5,22 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSurvey, forgetHosted, listHosted, rememberHosted, type Hosted } from "@/lib/api";
 import type { Question, QuestionType } from "@/lib/types";
+import { STARTER, STARTER_TITLE } from "@/lib/starter";
 
 const TYPE_LABEL: Record<QuestionType, string> = {
   text: "Open answer",
-  scale: "Scale 1 to 5",
+  named: "Open answer, with name",
+  scale: "Scale",
   choice: "Pick one",
+  info: "Content slide",
 };
 
-const STARTER: Question[] = [
-  { id: "q1", text: "How are you feeling about the team right now?", type: "scale" },
-  { id: "q2", text: "What is one thing we should stop doing?", type: "text" },
-  { id: "q3", text: "What is one thing we should start doing?", type: "text" },
-];
-
-let seq = 10;
+let seq = 100;
 const newId = () => `q${seq++}`;
 
 export default function Home() {
   const router = useRouter();
-  const [title, setTitle] = useState("Team meetup check-in");
+  const [title, setTitle] = useState(STARTER_TITLE);
   const [questions, setQuestions] = useState<Question[]>(STARTER);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +45,13 @@ export default function Home() {
   const add = (type: QuestionType) =>
     setQuestions((qs) => [
       ...qs,
-      { id: newId(), text: "", type, ...(type === "choice" ? { options: ["Yes", "No"] } : {}) },
+      {
+        id: newId(),
+        text: "",
+        type,
+        ...(type === "choice" ? { options: ["Yes", "No"] } : {}),
+        ...(type === "scale" ? { min: 0, max: 10 } : {}),
+      },
     ]);
 
   async function submit(e: React.FormEvent) {
@@ -59,12 +62,15 @@ export default function Home() {
         ...q,
         text: q.text.trim(),
         options: q.type === "choice" ? q.options?.map((o) => o.trim()).filter(Boolean) : undefined,
+        body: q.type === "info" ? q.body?.trim() : undefined,
       }))
       .filter((q) => q.text);
     if (!title.trim()) return setError("Give the survey a title.");
     if (cleaned.length === 0) return setError("Add at least one question.");
     if (cleaned.some((q) => q.type === "choice" && (q.options?.length ?? 0) < 2))
       return setError("Every pick-one question needs at least two options.");
+    if (cleaned.some((q) => q.type === "scale" && (q.max ?? 5) - (q.min ?? 1) < 1))
+      return setError("A scale's high end must be above its low end.");
     setBusy(true);
     try {
       const { code, host_key } = await createSurvey(title.trim(), cleaned);
@@ -107,10 +113,27 @@ export default function Home() {
               <input
                 id={`q-${q.id}`}
                 className="field"
-                placeholder="Type your question"
+                placeholder={q.type === "info" ? "Slide title" : "Type your question"}
                 value={q.text}
                 onChange={(e) => update(i, { text: e.target.value })}
               />
+              {q.type === "scale" && (
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <label htmlFor={`q-${q.id}-min`}>From</label>
+                  <input id={`q-${q.id}-min`} type="number" className="field w-20" value={q.min ?? 1} min={0} max={9}
+                    onChange={(e) => update(i, { min: Number(e.target.value) })} />
+                  <label htmlFor={`q-${q.id}-max`}>to</label>
+                  <input id={`q-${q.id}-max`} type="number" className="field w-20" value={q.max ?? 5} min={2} max={10}
+                    onChange={(e) => update(i, { max: Number(e.target.value) })} />
+                </div>
+              )}
+              {q.type === "info" && (
+                <textarea id={`q-${q.id}-body`} className="field min-h-20" placeholder="Slide text (optional)"
+                  value={q.body ?? ""} onChange={(e) => update(i, { body: e.target.value })} />
+              )}
+              {q.type === "named" && (
+                <p className="text-xs text-muted">Not anonymous. The participant types their name with this answer.</p>
+              )}
               {q.type === "choice" && (
                 <div className="flex flex-col gap-2">
                   {(q.options ?? []).map((opt, k) => (
@@ -149,8 +172,10 @@ export default function Home() {
           ))}
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn" onClick={() => add("text")}>+ Open answer</button>
-            <button type="button" className="btn" onClick={() => add("scale")}>+ Scale 1 to 5</button>
+            <button type="button" className="btn" onClick={() => add("named")}>+ Open answer with name</button>
+            <button type="button" className="btn" onClick={() => add("scale")}>+ Scale 0 to 10</button>
             <button type="button" className="btn" onClick={() => add("choice")}>+ Pick one</button>
+            <button type="button" className="btn" onClick={() => add("info")}>+ Content slide</button>
           </div>
         </div>
 

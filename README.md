@@ -6,7 +6,7 @@ Built with Next.js (App Router) and Supabase.
 
 ## How it works
 
-- **Create** a survey on the home page. You get a short code and a private host link.
+- **Create** a survey on the home page. You get a short code and a private host link. Question types: open answer, open answer with name (not anonymous), scale with any range up to 0 to 10, pick one, and content slides that show text without asking anything. The home page starts with the Rendy meetup question set from `src/lib/starter.ts`.
 - **Share** the QR code from the host page. It points to `/s/<code>`.
 - **Answer** from any phone. No login. No name, email, or device identifier is stored with a response.
 - **Review** on the host page. Results poll every few seconds. Close the survey when you start discussing.

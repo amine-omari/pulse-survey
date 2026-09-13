@@ -1,10 +1,13 @@
-export type QuestionType = "text" | "scale" | "choice";
+export type QuestionType = "text" | "named" | "scale" | "choice" | "info";
 
 export type Question = {
   id: string;
   text: string;
   type: QuestionType;
   options?: string[]; // choice only
+  min?: number; // scale only, default 1
+  max?: number; // scale only, default 5
+  body?: string; // info only
 };
 
 export type Survey = {
@@ -27,4 +30,6 @@ export type Results = Survey & {
   responses: ResponseRow[];
 };
 
-export const SCALE_MAX = 5;
+export const scaleRange = (q: Question) => ({ min: q.min ?? 1, max: q.max ?? 5 });
+export const nameKey = (id: string) => `${id}__name`;
+export const isAnswerable = (q: Question) => q.type !== "info";

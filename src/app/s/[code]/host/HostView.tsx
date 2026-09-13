@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { deleteSurvey, forgetHosted, getResults, rememberHosted, setSurveyStatus } from "@/lib/api";
 import type { Question, Results } from "@/lib/types";
-import { SCALE_MAX } from "@/lib/types";
+import { isAnswerable, nameKey, scaleRange } from "@/lib/types";
 
 const POLL_MS = 3000;
 
@@ -132,9 +132,17 @@ export default function HostView() {
       ) : (
         <section className="flex flex-col gap-6">
           {n === 0 && <p className="text-muted">No answers yet. The results refresh every few seconds.</p>}
-          {results.questions.map((q, i) => (
-            <QuestionResult key={q.id} index={i} question={q} results={results} />
-          ))}
+          {results.questions.map((q) =>
+            q.type === "info" ? (
+              <section key={q.id} className="card p-5 bg-surface-2 border-transparent">
+                <span className="label">Slide</span>
+                <h2 className="mt-1 text-2xl font-semibold">{q.text}</h2>
+                {q.body && <p className="mt-2 text-muted whitespace-pre-wrap leading-relaxed max-w-prose">{q.body}</p>}
+              </section>
+            ) : (
+              <QuestionResult key={q.id} index={results.questions.filter(isAnswerable).indexOf(q)} question={q} results={results} />
+            ),
+          )}
         </section>
       )}
     </div>
@@ -164,7 +172,22 @@ function QuestionResult({ index, question: q, results }: { index: number; questi
         </ul>
       )}
 
-      {q.type === "scale" && <ScaleResult values={values as number[]} />}
+      {q.type === "named" && (
+        <ul className="flex flex-col gap-2">
+          {count === 0 && <li className="text-muted text-sm">Nothing yet.</li>}
+          {results.responses
+            .filter((r) => r.answers[q.id] !== undefined && r.answers[q.id] !== "")
+            .map((r) => (
+              <li key={r.id} className="rounded-lg bg-surface-2 px-3 py-2 leading-relaxed">
+                <span className="font-semibold">{String(r.answers[nameKey(q.id)] ?? "Unnamed")}</span>
+                <span className="text-muted"> · </span>
+                <span className="whitespace-pre-wrap">{String(r.answers[q.id])}</span>
+              </li>
+            ))}
+        </ul>
+      )}
+
+      {q.type === "scale" && <ScaleResult values={values as number[]} range={scaleRange(q)} />}
 
       {q.type === "choice" && (
         <Bars
@@ -176,8 +199,8 @@ function QuestionResult({ index, question: q, results }: { index: number; questi
   );
 }
 
-function ScaleResult({ values }: { values: number[] }) {
-  const nums = values.map(Number).filter((v) => v >= 1 && v <= SCALE_MAX);
+function ScaleResult({ values, range }: { values: number[]; range: { min: number; max: number } }) {
+  const nums = values.map(Number).filter((v) => v >= range.min && v <= range.max);
   const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
   return (
     <div className="grid gap-5 sm:grid-cols-[auto_1fr] items-start">
@@ -185,10 +208,10 @@ function ScaleResult({ values }: { values: number[] }) {
         <div className="text-4xl font-[family-name:var(--font-display)] font-bold tabular-nums">
           {avg === null ? "–" : avg.toFixed(1)}
         </div>
-        <div className="label mt-1">Average of {SCALE_MAX}</div>
+        <div className="label mt-1">Average of {range.max}</div>
       </div>
       <Bars
-        rows={Array.from({ length: SCALE_MAX }, (_, k) => k + 1).map((s) => ({
+        rows={Array.from({ length: range.max - range.min + 1 }, (_, k) => range.min + k).map((s) => ({
           label: String(s),
           n: nums.filter((v) => v === s).length,
         }))}

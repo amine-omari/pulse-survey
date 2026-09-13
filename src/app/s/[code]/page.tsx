@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getSurvey, submitResponse } from "@/lib/api";
 import type { Answers, Survey } from "@/lib/types";
-import { SCALE_MAX } from "@/lib/types";
+import { isAnswerable, nameKey, scaleRange } from "@/lib/types";
 
 type State = { kind: "loading" } | { kind: "missing" } | { kind: "ready"; survey: Survey } | { kind: "done" };
 
@@ -52,7 +52,8 @@ export default function AnswerPage() {
       </div>
     );
 
-  const answered = survey.questions.filter((q) => {
+  const answerable = survey.questions.filter(isAnswerable);
+  const answered = answerable.filter((q) => {
     const v = answers[q.id];
     return v !== undefined && v !== "";
   }).length;
@@ -65,6 +66,11 @@ export default function AnswerPage() {
       const v = answers[q.id];
       if (v === undefined || v === "") continue;
       clean[q.id] = typeof v === "string" ? v.trim().slice(0, 2000) : v;
+      if (q.type === "named") {
+        const name = String(answers[nameKey(q.id)] ?? "").trim().slice(0, 80);
+        if (!name) return setError(`Add your name to "${q.text}" or leave that answer empty.`);
+        clean[nameKey(q.id)] = name;
+      }
     }
     if (Object.keys(clean).length === 0) return setError("Answer at least one question.");
     setBusy(true);
@@ -83,16 +89,43 @@ export default function AnswerPage() {
         <span className="pill">Anonymous</span>
         <h1 className="mt-3 text-3xl font-bold">{survey.title}</h1>
         <p className="mt-1 text-sm text-muted">
-          {survey.questions.length} question{survey.questions.length === 1 ? "" : "s"}. Skip any you like.
+          {answerable.length} question{answerable.length === 1 ? "" : "s"}. Skip any you like.
         </p>
       </div>
 
-      {survey.questions.map((q, i) => (
+      {survey.questions.map((q) => (
+        q.type === "info" ? (
+          <section key={q.id} className="card p-5 bg-surface-2 border-transparent">
+            <span className="label">Note</span>
+            <h2 className="mt-1 text-xl font-semibold">{q.text}</h2>
+            {q.body && <p className="mt-2 text-muted whitespace-pre-wrap leading-relaxed">{q.body}</p>}
+          </section>
+        ) : (
         <fieldset key={q.id} className="flex flex-col gap-3">
           <legend className="font-semibold text-lg leading-snug">
-            <span className="text-muted font-mono text-sm mr-2">{i + 1}</span>
+            <span className="text-muted font-mono text-sm mr-2">{answerable.indexOf(q) + 1}</span>
             {q.text}
           </legend>
+
+          {q.type === "named" && (
+            <>
+              <span className="pill self-start" style={{ color: "var(--danger)" }}>Not anonymous</span>
+              <input
+                id={`a-${q.id}-name`}
+                className="field"
+                placeholder="Your name"
+                value={(answers[nameKey(q.id)] as string) ?? ""}
+                onChange={(e) => setAnswers({ ...answers, [nameKey(q.id)]: e.target.value })}
+              />
+              <textarea
+                id={`a-${q.id}`}
+                className="field min-h-24"
+                placeholder="Your answer"
+                value={(answers[q.id] as string) ?? ""}
+                onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+              />
+            </>
+          )}
 
           {q.type === "text" && (
             <textarea
@@ -106,8 +139,8 @@ export default function AnswerPage() {
 
           {q.type === "scale" && (
             <div className="flex flex-col gap-1.5">
-              <div className="flex gap-2">
-                {Array.from({ length: SCALE_MAX }, (_, k) => k + 1).map((n) => (
+              <div className="flex gap-1.5 flex-wrap">
+                {Array.from({ length: scaleRange(q).max - scaleRange(q).min + 1 }, (_, k) => scaleRange(q).min + k).map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -146,13 +179,14 @@ export default function AnswerPage() {
             </div>
           )}
         </fieldset>
+        )
       ))}
 
       {error && <p className="text-danger text-sm" role="alert">{error}</p>}
 
       <div className="sticky bottom-4 flex items-center justify-between gap-3 card p-3">
         <span className="text-sm text-muted">
-          {answered} of {survey.questions.length} answered
+          {answered} of {answerable.length} answered
         </span>
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? "Sending…" : "Send anonymously"}
