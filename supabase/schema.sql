@@ -1,7 +1,7 @@
 -- Pulse: anonymous team surveys
 -- Run this in the Supabase SQL editor (Dashboard → SQL → New query).
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.surveys (
   id          uuid primary key default gen_random_uuid(),
@@ -37,7 +37,7 @@ $$;
 -- Host: create a survey. Returns the join code and the host key.
 create or replace function public.create_survey(p_title text, p_questions jsonb)
 returns table (code text, host_key text)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare v_code text; v_key text;
 begin
   if p_title is null or length(trim(p_title)) = 0 then raise exception 'title required'; end if;
@@ -57,13 +57,13 @@ end $$;
 -- Participant: fetch the survey to answer (no host key, no responses).
 create or replace function public.get_survey(p_code text)
 returns table (code text, title text, questions jsonb, status text)
-language sql security definer set search_path = public stable as $$
+language sql security definer set search_path = public, extensions stable as $$
   select s.code, s.title, s.questions, s.status from surveys s where s.code = upper(p_code);
 $$;
 
 -- Participant: submit an anonymous response. Nothing about the sender is stored.
 create or replace function public.submit_response(p_code text, p_answers jsonb)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare v_id uuid; v_status text;
 begin
   select id, status into v_id, v_status from surveys where code = upper(p_code);
@@ -76,7 +76,7 @@ end $$;
 
 -- Host: read the survey plus every response. Requires the host key.
 create or replace function public.get_results(p_code text, p_key text)
-returns jsonb language plpgsql security definer set search_path = public stable as $$
+returns jsonb language plpgsql security definer set search_path = public, extensions stable as $$
 declare v_survey surveys%rowtype; v_responses jsonb;
 begin
   select * into v_survey from surveys where code = upper(p_code) and host_key = p_key;
@@ -90,7 +90,7 @@ end $$;
 
 -- Host: open or close the survey.
 create or replace function public.set_survey_status(p_code text, p_key text, p_status text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if p_status not in ('open','closed') then raise exception 'bad status'; end if;
   update surveys set status = p_status where code = upper(p_code) and host_key = p_key;
@@ -99,7 +99,7 @@ end $$;
 
 -- Host: delete the survey and all its responses.
 create or replace function public.delete_survey(p_code text, p_key text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   delete from surveys where code = upper(p_code) and host_key = p_key;
   if not found then raise exception 'not found'; end if;
