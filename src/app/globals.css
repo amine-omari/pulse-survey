@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f3f4f1;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #e9ebe6;
-  --ink: #16181d;
-  --muted: #676d75;
-  --line: #d9dcd6;
-  --accent: #0e8c7a;
+  --surface-2: #f4f4f5;
+  --ink: #000000;
+  --muted: #6b6b73;
+  --line: #e4e4e7;
+  --accent: #7c3aed;
   --accent-ink: #ffffff;
-  --accent-soft: #d8f0ea;
-  --danger: #b4362b;
+  --accent-soft: #f1ebfe;
+  --danger: #c0392b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121417;
-    --surface: #1b1e23;
-    --surface-2: #23272d;
-    --ink: #eceef0;
-    --muted: #9aa0a8;
-    --line: #2c3037;
-    --accent: #2fc4ac;
-    --accent-ink: #0b1a17;
-    --accent-soft: #163730;
-    --danger: #e5675b;
+    --bg: #000000;
+    --surface: #0f0f12;
+    --surface-2: #1a1a1f;
+    --ink: #ffffff;
+    --muted: #9d9da6;
+    --line: #26262c;
+    --accent: #a78bfa;
+    --accent-ink: #120a24;
+    --accent-soft: #241548;
+    --danger: #ef6a5c;
   }
 }
 
@@ -40,7 +40,7 @@
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-geist-sans), system-ui, sans-serif;
+  --font-display: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
@@ -50,7 +50,7 @@ body {
   font-family: var(--font-sans);
 }
 
-h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; letter-spacing: -0.025em; }
 
 .label { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 
@@ -70,13 +70,13 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; letter-spacin
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.btn-primary:hover { background: var(--accent); filter: brightness(1.08); }
+.btn-primary { background: var(--ink); color: var(--bg); border-color: transparent; }
+.btn-primary:hover { background: var(--ink); opacity: 0.85; }
 .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
 .btn-danger { color: var(--danger); }
 
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
 
 .pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
 .pill-live { background: var(--accent-soft); color: var(--accent); }
