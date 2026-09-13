@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createSurvey, forgetHosted, listHosted, rememberHosted, type Hosted } from "@/lib/api";
 import type { Question, QuestionType } from "@/lib/types";
 import { STARTER, STARTER_TITLE } from "@/lib/starter";
+import { Shell } from "@/components/Shell";
 
 const TYPE_LABEL: Record<QuestionType, string> = {
   text: "Open answer",
@@ -83,6 +84,7 @@ export default function Home() {
   }
 
   return (
+    <Shell>
     <div className="mx-auto max-w-2xl flex flex-col gap-10 pt-6">
       <section>
         <h1 className="text-4xl font-bold">Ask the room, anonymously.</h1>
@@ -215,5 +217,6 @@ export default function Home() {
         </section>
       )}
     </div>
+    </Shell>
   );
 }
