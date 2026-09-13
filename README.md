@@ -17,7 +17,7 @@ Host links carry a secret key in the URL (`?k=...`) and are also remembered in t
 
 1. Create a Supabase project.
 2. Open the SQL editor and run `supabase/schema.sql`.
-3. Copy `.env.example` to `.env.local` and fill in your project URL and anon key (Project Settings → API).
+3. Copy `.env.example` to `.env.local` and fill in your project URL and publishable key (Project Settings → API Keys).
 4. Install and run:
 
 ```bash
@@ -29,7 +29,7 @@ Open http://localhost:3000.
 
 ## Security model
 
-Both tables have row level security enabled with no policies, so the public anon key cannot read or write them directly. All access goes through `security definer` functions:
+Both tables have row level security enabled with no policies, so the publishable key cannot read or write them directly. All access goes through `security definer` functions:
 
 | Function | Who | Does |
 | --- | --- | --- |

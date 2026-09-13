@@ -23,7 +23,7 @@ create table if not exists public.responses (
 create index if not exists responses_survey_idx on public.responses(survey_id);
 
 -- Lock both tables down. Every access goes through the functions below,
--- so the public anon key can never read host keys or list raw responses.
+-- so the publishable key can never read host keys or list raw responses.
 alter table public.surveys   enable row level security;
 alter table public.responses enable row level security;
 
