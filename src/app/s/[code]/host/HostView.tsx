@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { deleteSurvey, forgetHosted, getResults, rememberHosted, setSurveyStatus } from "@/lib/api";
 import type { Question, Results } from "@/lib/types";
 import { isAnswerable, nameKey, scaleRange } from "@/lib/types";
+import { AverageBars, Donut, Histogram, Legend } from "@/components/charts";
 
 const POLL_MS = 3000;
 
@@ -132,6 +133,7 @@ export default function HostView() {
       ) : (
         <section className="flex flex-col gap-6">
           {n === 0 && <p className="text-muted">No answers yet. The results refresh every few seconds.</p>}
+          {n > 0 && <Summary results={results} />}
           {results.questions.map((q) =>
             q.type === "info" ? (
               <section key={q.id} className="card p-5 bg-surface-2 border-transparent">
@@ -145,6 +147,60 @@ export default function HostView() {
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+function scaleAvg(results: Results, q: Question) {
+  const { min, max } = scaleRange(q);
+  const nums = results.responses.map((r) => Number(r.answers[q.id])).filter((v) => !Number.isNaN(v) && v >= min && v <= max);
+  return { avg: nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null, n: nums.length, nums, min, max };
+}
+function Summary({ results }: { results: Results }) {
+  const n = results.responses.length;
+  const scales = results.questions.filter((q) => q.type === "scale");
+  const choices = results.questions.filter((q) => q.type === "choice");
+  const texts = results.questions.filter((q) => q.type === "text" || q.type === "named");
+  const textCount = results.responses.reduce(
+    (acc, row) => acc + texts.filter((q) => row.answers[q.id] !== undefined && row.answers[q.id] !== "").length,
+    0,
+  );
+  const overall = scales.map((q) => scaleAvg(results, q)).filter((x) => x.avg !== null);
+  const overallAvg = overall.length ? overall.reduce((a, x) => a + (x.avg as number) * x.n, 0) / overall.reduce((a, x) => a + x.n, 0) : null;
+  const overallMax = scales.length ? Math.max(...scales.map((q) => scaleRange(q).max)) : 10;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Stat value={String(n)} label={n === 1 ? "response" : "responses"} />
+        <Stat value={overallAvg === null ? "–" : overallAvg.toFixed(1)} label={`avg rating of ${overallMax}`} />
+        <Stat value={String(textCount)} label="written comments" />
+      </div>
+      {scales.length > 1 && (
+        <article className="card p-5 flex flex-col gap-4">
+          <header className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Ratings at a glance</h2>
+            <span className="pill">{scales.length} statements</span>
+          </header>
+          <AverageBars
+            rows={scales.map((q) => {
+              const a = scaleAvg(results, q);
+              return { label: q.text, avg: a.avg, n: a.n };
+            })}
+            max={overallMax}
+          />
+        </article>
+      )}
+      {choices.length > 0 && <span className="label pt-2">By question</span>}
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="card p-4">
+      <div className="text-3xl font-bold tabular-nums leading-none">{value}</div>
+      <div className="label mt-2">{label}</div>
     </div>
   );
 }
@@ -167,7 +223,7 @@ function QuestionResult({ index, question: q, results }: { index: number; questi
         <ul className="flex flex-col gap-2">
           {count === 0 && <li className="text-muted text-sm">Nothing yet.</li>}
           {(values as string[]).map((v, k) => (
-            <li key={k} className="rounded-lg bg-surface-2 px-3 py-2 whitespace-pre-wrap leading-relaxed">{v}</li>
+            <li key={k} className="rounded-lg bg-surface-2 px-3 py-2 whitespace-pre-wrap leading-relaxed border-l-2 border-accent">{v}</li>
           ))}
         </ul>
       )}
@@ -190,51 +246,39 @@ function QuestionResult({ index, question: q, results }: { index: number; questi
       {q.type === "scale" && <ScaleResult values={values as number[]} range={scaleRange(q)} />}
 
       {q.type === "choice" && (
-        <Bars
-          rows={(q.options ?? []).map((opt) => ({ label: opt, n: values.filter((v) => v === opt).length }))}
-          total={count}
-        />
+        <ChoiceResult rows={(q.options ?? []).map((opt) => ({ label: opt, n: values.filter((v) => v === opt).length }))} total={count} />
       )}
     </article>
+  );
+}
+
+function ChoiceResult({ rows, total }: { rows: { label: string; n: number }[]; total: number }) {
+  return (
+    <div className="grid gap-5 sm:grid-cols-[auto_1fr] items-center">
+      <div className="justify-self-center">
+        <Donut rows={rows} total={total} />
+      </div>
+      <Legend rows={rows} total={total} />
+    </div>
   );
 }
 
 function ScaleResult({ values, range }: { values: number[]; range: { min: number; max: number } }) {
   const nums = values.map(Number).filter((v) => v >= range.min && v <= range.max);
   const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+  const steps = Array.from({ length: range.max - range.min + 1 }, (_, k) => range.min + k).map((s) => ({
+    label: String(s),
+    n: nums.filter((v) => v === s).length,
+  }));
+  const spread = nums.length ? `${Math.min(...nums)} to ${Math.max(...nums)}` : "–";
   return (
-    <div className="grid gap-5 sm:grid-cols-[auto_1fr] items-start">
-      <div className="card p-4 min-w-28 text-center">
-        <div className="text-4xl font-[family-name:var(--font-display)] font-bold tabular-nums">
-          {avg === null ? "–" : avg.toFixed(1)}
-        </div>
+    <div className="grid gap-5 sm:grid-cols-[auto_1fr] items-center">
+      <div className="card p-4 min-w-32 text-center">
+        <div className="text-4xl font-bold tabular-nums">{avg === null ? "–" : avg.toFixed(1)}</div>
         <div className="label mt-1">Average of {range.max}</div>
+        <div className="text-xs text-muted mt-2 tabular-nums">range {spread}</div>
       </div>
-      <Bars
-        rows={Array.from({ length: range.max - range.min + 1 }, (_, k) => range.min + k).map((s) => ({
-          label: String(s),
-          n: nums.filter((v) => v === s).length,
-        }))}
-        total={nums.length}
-      />
-    </div>
-  );
-}
-
-function Bars({ rows, total }: { rows: { label: string; n: number }[]; total: number }) {
-  return (
-    <div className="grid gap-2" style={{ gridTemplateColumns: "minmax(2rem, auto) 1fr auto" }}>
-      {rows.map((r) => (
-        <div key={r.label} className="contents">
-          <span className="text-sm font-medium truncate">{r.label}</span>
-          <div className="bar self-center">
-            <span style={{ width: total ? `${(r.n / total) * 100}%` : "0%" }} />
-          </div>
-          <span className="text-sm text-muted tabular-nums text-right">
-            {r.n}{total ? ` · ${Math.round((r.n / total) * 100)}%` : ""}
-          </span>
-        </div>
-      ))}
+      <Histogram steps={steps} avg={avg} />
     </div>
   );
 }

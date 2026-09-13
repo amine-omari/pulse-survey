@@ -57,6 +57,6 @@ export const STARTER: Question[] = [
     type: "info",
     body: "Every answer gets sorted into: fix this week / fix this month / not now. I'll share the list in Discord within 48 hours.",
   },
-  { id: "q16", text: "One thing I'll change about how I work:", type: "named" },
+  { id: "q16", text: "One thing I'll change about how I work:", type: "text" },
   { id: "q17", text: "What I commit to", type: "info", body: "Filled in live during the meetup." },
 ];
